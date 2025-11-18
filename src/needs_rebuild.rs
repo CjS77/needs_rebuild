@@ -1,7 +1,6 @@
 use crate::errors::NeedsRebuildError;
 use crate::options::ScanOptions;
 use glob::Pattern;
-use log::{debug, info};
 use std::fs;
 use std::path::Path;
 use walkdir::WalkDir;
@@ -21,12 +20,18 @@ pub fn needs_rebuild(
     options: ScanOptions,
 ) -> Result<bool, NeedsRebuildError> {
     // If the output file doesn't exist, we definitely need to build.
-    if !asset.as_ref().exists() {
+    let target = asset.as_ref();
+    if !target.exists() {
         return Ok(true);
     }
     // Get the last modified time of the output file.
-    let output_modified_time = fs::metadata(asset)?.modified()?;
-    debug!("output_modified_time: {:?}", output_modified_time);
+    let output_modified_time = fs::metadata(target)?.modified()?;
+    println!(
+        "{}Output {} modified at: {:?}",
+        options.log_prefix,
+        target.display(),
+        output_modified_time
+    );
 
     // Compile the glob patterns for efficiency.
     let compiled_patterns = options
@@ -68,8 +73,7 @@ pub fn needs_rebuild(
 
         if options.verbose {
             let status = if is_newer { "CHANGED" } else { "Ok" };
-            info!("{file_name}: {status}");
-            debug!("{file_name}: {source_modified_time:?}");
+            println!("{}{file_name}: {status}", options.log_prefix);
         }
 
         if is_newer {

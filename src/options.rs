@@ -4,6 +4,8 @@ pub struct ScanOptions {
     pub(crate) patterns: Vec<String>,
     /// Logs the names of files and directories as they are processed.
     pub verbose: bool,
+    /// Prefix to use for log messages. Defaults to "cargo:warning="
+    pub(crate) log_prefix: &'static str,
     /// Follow symbolic links. By default, this is disabled.
     ///
     /// When true, symbolic links are followed as if they were normal directories and files. If a symbolic link is
@@ -36,6 +38,7 @@ impl Default for ScanOptions {
     fn default() -> Self {
         Self {
             patterns: vec!["**/*".to_string()],
+            log_prefix: "cargo:warning=",
             verbose: false,
             follow_links: false,
             follow_root_links: true,
@@ -59,6 +62,10 @@ impl ScanOptions {
 
     pub fn patterns(&mut self, patterns: &[&str]) {
         self.patterns = patterns.iter().map(|s| s.to_string()).collect();
+    }
+
+    pub fn log_prefix(&mut self, prefix: &'static str) {
+        self.log_prefix = prefix;
     }
 
     pub fn max_depth(&mut self, value: usize) {
