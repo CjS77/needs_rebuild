@@ -1,6 +1,6 @@
 use crate::errors::NeedsRebuildError;
 use crate::options::ScanOptions;
-use glob::Pattern;
+use globset::{Glob, GlobSetBuilder};
 use std::fs;
 use std::path::Path;
 use walkdir::WalkDir;
@@ -26,20 +26,30 @@ pub fn needs_rebuild(
     }
     // Get the last modified time of the output file.
     let output_modified_time = fs::metadata(target)?.modified()?;
-    println!(
-        "{}Output {} modified at: {:?}",
-        options.log_prefix,
-        target.display(),
-        output_modified_time
-    );
+    if options.verbose {
+        println!(
+            "{}Output {} modified at: {:?}",
+            options.log_prefix,
+            target.display(),
+            output_modified_time
+        );
+    }
 
     // Compile the glob patterns for efficiency.
+    let mut builder = GlobSetBuilder::new();
     let compiled_patterns = options
         .patterns
         .iter()
-        .map(|p| Pattern::new(p))
+        .map(|p| Glob::new(p))
         .collect::<Result<Vec<_>, _>>()?;
+    compiled_patterns.into_iter().for_each(|pattern| {
+        builder.add(pattern);
+    });
+    let set = builder.build()?;
 
+    if options.verbose {
+        println!("{}Checking source files for updates", options.log_prefix);
+    }
     // Walk the source directory and check for any file that is newer.
     let mut walker = WalkDir::new(source_dir.as_ref())
         .follow_links(options.follow_links)
@@ -55,15 +65,7 @@ pub fn needs_rebuild(
         let entry = entry?;
         let path = entry.path();
 
-        // Skip directories
-        if path.is_dir() {
-            continue;
-        }
-
-        // Check if the file matches any of the provided patterns
-        let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
-
-        if !compiled_patterns.iter().any(|p| p.matches(file_name)) {
+        if !set.is_match(path) {
             continue;
         }
 
@@ -73,7 +75,7 @@ pub fn needs_rebuild(
 
         if options.verbose {
             let status = if is_newer { "CHANGED" } else { "Ok" };
-            println!("{}{file_name}: {status}", options.log_prefix);
+            println!("{}{}: {status}", options.log_prefix, path.display());
         }
 
         if is_newer {

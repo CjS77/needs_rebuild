@@ -22,7 +22,8 @@ fn new_file() {
     assert!(rebuild_needed);
 
     info!("Third check: filter out .foo files. No rebuild needed.");
-    options.patterns(&["**/*.txt", "**/*.cpp"]);
+    options.patterns(&["**/*.c", "**/folder_a/**/*.txt"]);
+    options.log_prefix = "Test 3: ";
     let rebuild_needed = needs_rebuild("test_files", OUTPUT_FILE, options).expect("rebuild");
     assert!(!rebuild_needed);
 }
