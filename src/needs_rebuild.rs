@@ -73,9 +73,8 @@ pub fn needs_rebuild(
         let source_modified_time = entry.metadata()?.modified()?;
         let is_newer = source_modified_time > output_modified_time;
 
-        if options.verbose {
-            let status = if is_newer { "CHANGED" } else { "Ok" };
-            println!("{}{}: {status}", options.log_prefix, path.display());
+        if options.verbose && is_newer {
+            println!("{}{}: CHANGED", options.log_prefix, path.display());
         }
 
         if is_newer {
